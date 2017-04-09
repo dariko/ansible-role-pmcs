@@ -1,0 +1,52 @@
+{% set current_member=(pmcs_cluster_members|selectattr('name','equalto',inventory_hostname)|list)[0] %}
+totem {
+	version: 2
+
+	crypto_cipher: aes256
+  crypto_hash: sha1
+  
+  token: 3000
+  token_retransmits_before_loss_const: 10
+
+  
+	interface {
+		ringnumber: 0
+{% if 'address' in current_member %}
+		bindnetaddr: {{current_member.address}}
+{% endif %}
+		ttl: 1
+	}
+	transport: udpu
+}
+
+logging {
+        fileline: off
+        to_logfile: yes
+        to_syslog: yes
+        logfile: /var/log/corosync/corosync.log
+        debug: off
+        timestamp: on
+        logger_subsys {
+                subsys: QUORUM
+                debug: off
+        }
+}
+
+quorum {
+        provider: corosync_votequorum
+        expected_votes: 2
+}
+
+nodelist {
+{% set count = 0 %}
+{% for member in pmcs_cluster_members %}
+{% set count = count + 1 %}
+        node {
+                name: {{member.name}}
+                nodeid: {{count}}
+{% if 'address' in member %}
+                ring0_addr: {{member.address}}
+{% endif %}
+        }
+{% endfor %}
+}

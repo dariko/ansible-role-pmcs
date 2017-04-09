@@ -1,0 +1,105 @@
+-   name: install os
+    include: "{{item}}"
+    with_first_found:
+    -   "install-{{ ansible_distribution }}-{{ ansible_distribution_major_version}}.yml"
+    -   "install-{{ ansible_distribution }}-{{ ansible_distribution_version}}.yml"
+    -   "install-{{ ansible_distribution }}.yml"
+
+-   name: enable services
+    service:
+        name: "{{item}}"
+        enabled: yes
+    with_items:
+    -   corosync
+    -   pacemaker
+
+-   name: log directory
+    file:
+        path: /var/log/corosync
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+
+-   name: template configuration
+    template:
+        src: corosync.conf.j2
+        dest: /etc/corosync/corosync.conf
+    register: out_pmcs_configuration
+
+-   name: copy authkey
+    file:
+        owner: root
+        group: haclient
+        mode: 0640
+        content: "{{pmcs_authkey}}"
+        dest: /etc/corosync/authkey.base64
+    register: out_pmcs_authkey
+
+-   name: decode authkey
+    shell: |
+        base64 -d /etc/corosync/authkey.base64 > /etc/corosync/authkey;
+        chown root:haclient /etc/corosync/authkey
+        chmod 640 /etc/corosync/authkey
+    changed_when: false
+
+#-   name: generate authkey on first host
+    #command: |
+        #dd if=/dev/urandom of=/etc/corosync/authkey bs=1 count=128
+    #args:
+        #creates: /etc/corosync/authkey
+    #register: out_pmcs_cluster_key_create
+    #when: inventory_hostname == pmcs_cluster_members[0].name
+
+#- name: get authkey on first host
+  #shell: |
+    #cat /etc/corosync/authkey | base64 -w 0
+  #changed_when: false
+  #register: out_pmcs_cluster_key_data
+  #when: inventory_hostname == pmcs_cluster_members[0].name
+
+#-   name: copy authkey on other hosts
+    #shell: |
+        #old=$(md5sum /etc/corosync/authkey)
+        #echo -n {{hostvars[pmcs_cluster_members[0].name].out_pmcs_cluster_key_data.stdout}} | base64 -d > /etc/corosync/authkey
+        #new=$(md5sum /etc/corosync/authkey)
+        #if [ "$old" != "$new" ]; then 
+          #echo "changed"
+        #else
+          #echo "unchanged"
+        #fi
+    #register: out_pmcs_cluster_key_copy
+    #changed_when: out_pmcs_cluster_key_copy.stdout_lines[0] == 'changed'
+    #when: inventory_hostname != pmcs_cluster_members[0].name
+
+-   name: set pmcs_cluster_restart fact
+    set_fact:
+        pmcs_restart: |-
+            out_pmcs_configuration or out_pmcs_authkey
+        #{{(out_pmcs_cluster_key_create.changed|default(False))
+        #or
+        #(out_pmcs_cluster_key_copy.changed|default(False))
+        #or 
+        #(out_pmcs_cluster_configuration_changed.changed|default(False))}}
+
+-   name: restart cluster services
+    shell: |
+        systemctl restart pacemaker
+        systemctl restart corosync
+    delegate_to: "{{ item }}"
+    when: hostvars[item].pmcs_restart
+    run_once: true
+    with_items: "{{ pmcs_members|map(attribute='name')|list }}"
+
+-   name: start services
+    service:
+        name: "{{item}}"
+        state: started
+    when: |
+        out_pmcs_install_packages is defined
+        and
+        out_pmcs_install_packages.changed
+    with_items:
+    -   corosync
+    -   pacemaker
+

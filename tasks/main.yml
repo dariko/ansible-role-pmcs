@@ -1,3 +1,13 @@
+-   name: test for variables
+    fail:
+        msg: "{{pmcs_loop_variables}} is not defined"
+    when: pmcs_loop_variables not in vars
+    with_items:
+    -   pmcs_members
+    -   pmcs_authkey
+    loop_control:
+        loop_var: pmcs_loop_variables
+
 -   name: install os
     include: "{{item}}"
     with_first_found:

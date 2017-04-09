@@ -1,4 +1,4 @@
-{% set current_member=(pmcs_cluster_members|selectattr('name','equalto',inventory_hostname)|list)[0] %}
+{% set current_member=(pmcs_members|selectattr('name','equalto',inventory_hostname)|list)[0] %}
 totem {
 	version: 2
 
@@ -39,7 +39,7 @@ quorum {
 
 nodelist {
 {% set count = 0 %}
-{% for member in pmcs_cluster_members %}
+{% for member in pmcs_members %}
 {% set count = count + 1 %}
         node {
                 name: {{member.name}}

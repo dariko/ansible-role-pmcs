@@ -72,7 +72,7 @@
     #changed_when: out_pmcs_cluster_key_copy.stdout_lines[0] == 'changed'
     #when: inventory_hostname != pmcs_cluster_members[0].name
 
--   name: set pmcs_cluster_restart fact
+-   name: set pmcs_restart fact
     set_fact:
         pmcs_restart: |-
             out_pmcs_configuration or out_pmcs_authkey

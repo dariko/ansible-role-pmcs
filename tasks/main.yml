@@ -28,7 +28,7 @@
     register: out_pmcs_configuration
 
 -   name: copy authkey
-    file:
+    copy:
         owner: root
         group: haclient
         mode: 0640

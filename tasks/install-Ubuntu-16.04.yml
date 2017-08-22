@@ -1,0 +1,11 @@
+-   name: install packages
+    package:
+        name: pacemaker,crmsh,fence-agents,python-pip
+        state: installed
+    register: out_pmcs_install_packages
+
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=819545
+-   name: install python-parallax
+    pip:
+        name: parallax
+        state: present

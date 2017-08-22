@@ -38,12 +38,10 @@ quorum {
 }
 
 nodelist {
-{% set count = 0 %}
 {% for member in pmcs_members %}
-{% set count = count + 1 %}
         node {
                 name: {{member.name}}
-                nodeid: {{count}}
+                nodeid: {{loop.index}}
 {% if 'address' in member %}
                 ring0_addr: {{member.address}}
 {% endif %}

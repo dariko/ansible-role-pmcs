@@ -64,7 +64,8 @@
         systemctl restart pacemaker
         systemctl restart corosync
     delegate_to: "{{ item }}"
-    when: hostvars[item].pmcs_restart
+    when: |
+        'pmcs_restart' in hostvars[item] and hostvars[item].pmcs_restart
     run_once: true
     with_items: "{{ pmcs_members|map(attribute='name')|list }}"
 

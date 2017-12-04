@@ -78,10 +78,6 @@
     service:
         name: "{{item}}"
         state: started
-    when: |
-        out_pmcs_install_packages is defined
-        and
-        out_pmcs_install_packages.changed
     with_items:
     -   corosync
     -   pacemaker

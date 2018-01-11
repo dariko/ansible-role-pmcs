@@ -7,3 +7,4 @@ pmcs_keygen_urandom: true
 pmcs_add_epel_release: true
 pmcs_name: ansible
 pmcs_interface: "{{ansible_default_ipv4.interface}}"
+pmcs_install_proxy: false

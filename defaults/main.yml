@@ -1,6 +1,3 @@
-#pmcs_name: ansible
-#pmcs_address: "{{ansible_default_ipv4.address}}"
-
 pmcs_interface: "{{ansible_default_ipv4.interface}}"
 pmcs_members: "{{ansible_play_hosts}}"
 pmcs_cluster_name: "pmcs"

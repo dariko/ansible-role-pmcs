@@ -1,4 +1,3 @@
-{% set current_member=(pmcs_members|selectattr('name','equalto',inventory_hostname)|list)[0] %}
 totem {
 	version: 2
 
@@ -11,9 +10,7 @@ totem {
   
 	interface {
 		ringnumber: 0
-{% if 'address' in current_member %}
-		bindnetaddr: {{current_member.address}}
-{% endif %}
+		bindnetaddr: {{vars['ansible_'+pmcs_interface].ipv4.address}}
 		ttl: 1
 	}
 	transport: udpu
@@ -40,11 +37,9 @@ quorum {
 nodelist {
 {% for member in pmcs_members %}
         node {
-                name: {{member.name}}
+                name: {{member}}
                 nodeid: {{loop.index}}
-{% if 'address' in member %}
-                ring0_addr: {{member.address}}
-{% endif %}
+                ring0_addr: {{hostvars[member]['ansible_'+pmcs_interface].ipv4.address}}
         }
 {% endfor %}
 }

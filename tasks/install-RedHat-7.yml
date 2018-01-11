@@ -25,12 +25,21 @@
             proxy={{pmcs_install_proxy}}
             {% endif %}
         dest: /etc/yum.repos.d/centos.repo
-
--   name: install epel
-    yum:
-        name: epel-release
-        state: installed
-    when: pmcs_add_epel_release
+-   name: add epel repo
+    copy:
+        content: |
+            [epel]
+            name=Extra Packages for Enterprise Linux 7 - $basearch
+            #baseurl=http://download.fedoraproject.org/pub/epel/7/$basearch
+            metalink=https://mirrors.fedoraproject.org/metalink?repo=epel-7&arch=$basearch
+            failovermethod=priority
+            enabled=1
+            gpgcheck=1
+            gpgkey=https://archive.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+            {% if pmcs_install_proxy != false %}
+            proxy={{pmcs_install_proxy}}
+            {% endif %}
+        dest: /etc/yum.repos.d/epel.repo
 
 -   name: install packages
     yum:

@@ -14,14 +14,6 @@
     -   "install-{{ ansible_distribution }}-{{ ansible_distribution_version}}.yml"
     -   "install-{{ ansible_distribution }}.yml"
 
--   name: enable services
-    service:
-        name: "{{item}}"
-        enabled: yes
-    with_items:
-    -   corosync
-    -   pacemaker
-
 -   name: log directory
     file:
         path: /var/log/corosync
@@ -36,52 +28,64 @@
         dest: /etc/corosync/corosync.conf
     register: out_pmcs_configuration
 
--   name: copy authkey
-    copy:
-        owner: root
-        group: haclient
-        mode: 0640
-        content: "{{pmcs_authkey}}"
-        dest: /etc/corosync/authkey.base64
-    register: out_pmcs_authkey
-
--   name: decode authkey
+-   name: create/read authkey on pmcs_keygen_node
     shell: |
-        base64 -d /etc/corosync/authkey.base64 > /etc/corosync/authkey;
-        chown root:haclient /etc/corosync/authkey
-        chmod 640 /etc/corosync/authkey
-    changed_when: false
+        if [ -f /etc/corosync/authkey ]
+        then
+            cat /etc/corosync/authkey
+        else
+            #corosync-keygen {{'-l' if pmcs_keygen_urandom else ''}} &>/dev/null
+            openssl rand -base64 {{pmcs_authkey_bits}} > /etc/corosync/authkey
+            cat /etc/corosync/authkey
+            exit 13
+        fi
+    failed_when: out_pmcs_authkey.rc not in [0,13]
+    register: out_pmcs_authkey
+    changed_when: out_pmcs_authkey.rc==13
+    when: inventory_hostname==pmcs_members[0]
+
+-   name: write authkey
+    copy:
+        content: "{{hostvars[pmcs_keygen_node].out_pmcs_authkey.stdout}}"
+        dest: /etc/corosync/authkey
+        owner: root
+        group: root
+        mode: 0400
+    when: inventory_hostname!=pmcs_keygen_node
+    register: out_pmcs_authkey
 
 -   name: set pmcs_restart fact
     set_fact:
         pmcs_restart: |-
-            {{out_pmcs_configuration.changed
+            {{(out_pmcs_configuration is defined and out_pmcs_configuration.changed)
               or
-              out_pmcs_authkey.changed}}
+              (out_pmcs_authkey is defined and out_pmcs_authkey.changed)}}
+
 -   name: restart cluster services
     shell: |
         systemctl restart pacemaker
         systemctl restart corosync
+        systemctl start pacemaker
+        systemctl start corosync
+        while ! crm status
+        do
+            sleep 1
+        done
     delegate_to: "{{ item }}"
     when: |
         'pmcs_restart' in hostvars[item] and hostvars[item].pmcs_restart
     run_once: true
-    with_items: "{{ pmcs_members|map(attribute='name')|list }}"
+    with_items: "{{ pmcs_members }}"
 
--   name: give cluster 30 seconds to settle
+-   name: give cluster 30 seconds to settle on first start
     pause:
         seconds: 30
-    when: pmcs_restart
+    when: pmcs_members|map('extract',hostvars,'pmcs_restart')|select('equalto',True)|list|length == pmcs_members|length
 
--   name: start services
+-   name: start, enable services
     service:
         name: "{{item}}"
-        state: started
-    when: |
-        out_pmcs_install_packages is defined
-        and
-        out_pmcs_install_packages.changed
+        enabled: yes
     with_items:
     -   corosync
     -   pacemaker
-

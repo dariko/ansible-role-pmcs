@@ -8,7 +8,9 @@
             gpgcheck=1
             gpgkey=http://download.opensuse.org/repositories/network:/ha-clustering:/Stable/RedHat_RHEL-7//repodata/repomd.xml.key
             enabled=0
-            proxy=http://proxolo.cs.poste.it:8080
+            {% if pmcs_install_proxy != false %}
+            proxy={{pmcs_install_proxy}}
+            {% endif %}
         dest: /etc/yum.repos.d/network:ha-clustering:Stable.repo
 -   name: add repository centos
     copy:
@@ -20,7 +22,17 @@
             gpgcheck=1
             gpgkey=http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-7
             enabled=0
+            {% if pmcs_install_proxy != false %}
+            proxy={{pmcs_install_proxy}}
+            {% endif %}
         dest: /etc/yum.repos.d/centos.repo
+
+-   name: install epel
+    yum:
+        name: epel-release
+        state: installed
+    when: pmcs_add_epel_release
+
 -   name: install packages
     yum:
         name: pacemaker,fence-agents-all,corosync,crmsh,python-pip

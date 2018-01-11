@@ -1,2 +1,9 @@
+pmcs_interface: "{{ansible_default_ipv4.interface}}"
+pmcs_members: "{{ansible_play_hosts}}"
+pmcs_cluster_name: "pmcs"
+pmcs_keygen_node: "{{pmcs_members[0]}}"
+pmcs_authkey_bits: 2048
+pmcs_keygen_urandom: true
+pmcs_add_epel_release: true
 pmcs_name: ansible
 pmcs_interface: "{{ansible_default_ipv4.interface}}"

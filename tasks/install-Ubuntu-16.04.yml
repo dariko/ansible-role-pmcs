@@ -2,6 +2,8 @@
     package:
         name: pacemaker,crmsh,fence-agents,python-pip
         state: installed
+    environment:
+        RUNLEVEL: 1
     register: out_pmcs_install_packages
 
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=819545

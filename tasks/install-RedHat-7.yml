@@ -25,6 +25,13 @@
             proxy={{pmcs_install_proxy}}
             {% endif %}
         dest: /etc/yum.repos.d/centos.repo
+
+-   name: install epel
+    yum:
+        name: epel-release
+        state: installed
+    when: pmcs_add_epel_release
+
 -   name: install packages
     yum:
         name: pacemaker,fence-agents-all,corosync,crmsh,python-pip

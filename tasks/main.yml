@@ -42,7 +42,7 @@
     failed_when: out_pmcs_authkey.rc not in [0,13]
     register: out_pmcs_authkey
     changed_when: out_pmcs_authkey.rc==13
-    when: inventory_hostname==pmcs_members[0]
+    when: inventory_hostname==pmcs_keygen_node
 
 -   name: write authkey
     copy:

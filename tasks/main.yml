@@ -44,9 +44,14 @@
     changed_when: out_pmcs_authkey.rc==13
     when: inventory_hostname==pmcs_keygen_node
 
+-   name: set fact pmcs_authkey
+    set_fact:
+        pmcs_authkey: "{{out_pmcs_authkey.stdout}}"
+    when: inventory_hostname==pmcs_keygen_node
+
 -   name: write authkey
     copy:
-        content: "{{hostvars[pmcs_keygen_node].out_pmcs_authkey.stdout}}"
+        content: "{{hostvars[pmcs_keygen_node].pmcs_authkey}}"
         dest: /etc/corosync/authkey
         owner: root
         group: root

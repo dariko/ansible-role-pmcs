@@ -59,28 +59,24 @@
     when: inventory_hostname!=pmcs_keygen_node
     register: out_pmcs_authkey
 
--   name: set pmcs_restart fact
+-   name: set pmcs_reload fact
     set_fact:
-        pmcs_restart: |-
-            {{(out_pmcs_configuration is defined and out_pmcs_configuration.changed)
-              or
-              (out_pmcs_authkey is defined and out_pmcs_authkey.changed)}}
+        pmcs_reload: "{{out_pmcs_configuration is defined and out_pmcs_configuration.changed}}"
 
--   name: restart cluster services
-    shell: |
-        systemctl restart pacemaker
-        systemctl restart corosync
-        systemctl start pacemaker
-        systemctl start corosync
-        while ! crm status
-        do
-            sleep 1
-        done
-    delegate_to: "{{ item }}"
-    when: |
-        'pmcs_restart' in hostvars[item] and hostvars[item].pmcs_restart
+-   name: reload corosync configuration
     run_once: true
-    with_items: "{{ pmcs_members }}"
+    shell: |
+        corosync-cfgtool -R
+    when:
+    -   pmcs_members|map('extract',hostvars,'pmcs_reload')|select('equalto',True)|list|length != pmcs_members|length
+    delegate_to: |-
+        {% set out=[] %}
+        {% for h in pmcs_members %}
+        {%   if not hostvars[h].pmcs_reload %}
+        {%     if out.append(h) %}{% endif %}
+        {%   endif %}
+        {% endfor %}
+        {{ out[0] }}
 
 -   name: give cluster 30 seconds to settle on first start
     pause:

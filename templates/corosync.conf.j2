@@ -38,7 +38,7 @@ nodelist {
 {% for member in pmcs_members %}
         node {
                 name: {{member}}
-                nodeid: {{loop.index}}
+                nodeid: {{hostvars[member].pmcs_node_index|default(loop.index)}}
                 ring0_addr: {{hostvars[member]['ansible_'+pmcs_interface].ipv4.address}}
         }
 {% endfor %}

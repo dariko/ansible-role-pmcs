@@ -64,11 +64,11 @@
         pmcs_reload: "{{out_pmcs_configuration is defined and out_pmcs_configuration.changed}}"
 
 -   name: reload corosync configuration
-    run_once: true
     shell: |
         corosync-cfgtool -R
     when:
     -   pmcs_members|map('extract',hostvars,'pmcs_reload')|select('equalto',True)|list|length != pmcs_members|length
+    -   inventory_hostname == pmcs_keygen_node
     delegate_to: |-
         {% set out=[] %}
         {% for h in pmcs_members %}

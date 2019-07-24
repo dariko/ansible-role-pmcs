@@ -1,0 +1,47 @@
+-   name: test for /etc/corosync/authkey
+    stat:
+        path: /etc/corosync/authkey
+    register: out_stat_authkey
+
+-   name: set fact pmcs_node_has_authkey
+    set_fact:
+        pmcs_node_has_authkey: "{{out_stat_authkey.stat.exists}}"
+
+-   name: set fact pmcs_nodes_with_authkey
+    set_fact:
+        pmcs_nodes_with_authkey: |
+            {% set out = [] %}
+            {% for h in pmcs_members %}
+            {% if hostvars[h].pmcs_node_has_authkey %}
+            {% if out.append(h) %}{% endif %}
+            {% endif %}
+            {% endfor %}
+            {{ out|to_json }}
+
+-   name: new authkey
+    when:
+    -   pmcs_nodes_with_authkey|length == 0
+    -   inventory_hostname == pmcs_members[0]
+    shell: |
+        openssl rand -base64 {{pmcs_authkey_bits}}
+    register: out_new_authkey
+
+-   name: set fact pmcs_authkey for new authkey
+    when:
+    -   pmcs_nodes_with_authkey|length == 0
+    set_fact:
+        pmcs_authkey: "{{hostvars[pmcs_members[0]].out_new_authkey.stdout}}"
+
+-   name: read authkey
+    when:
+    -   pmcs_nodes_with_authkey|length > 0
+    -   inventory_hostname == pmcs_nodes_with_authkey[0]
+    slurp:
+        path: /etc/corosync/authkey
+    register: out_existing_authkey
+
+-   name: set fact pmcs_authkey for existing authkey
+    when:
+    -   pmcs_nodes_with_authkey|length > 0
+    set_fact:
+        pmcs_authkey: "{{hostvars[pmcs_nodes_with_authkey[0]].out_existing_authkey.content|b64decode}}"

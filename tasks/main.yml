@@ -28,60 +28,25 @@
         dest: /etc/corosync/corosync.conf
     register: out_pmcs_configuration
 
--   name: create/read authkey on pmcs_keygen_node
-    shell: |
-        if [ -f /etc/corosync/authkey ]
-        then
-            cat /etc/corosync/authkey
-        else
-            #corosync-keygen {{'-l' if pmcs_keygen_urandom else ''}} &>/dev/null
-            openssl rand -base64 {{pmcs_authkey_bits}} > /etc/corosync/authkey
-            cat /etc/corosync/authkey
-            exit 13
-        fi
-    failed_when: out_pmcs_authkey.rc not in [0,13]
-    register: out_pmcs_authkey
-    changed_when: out_pmcs_authkey.rc==13
-    when: inventory_hostname==pmcs_keygen_node
+-   include: generated_pmcs_authkey.yml
+    when: pmcs_authkey is not defined
 
--   name: set fact pmcs_authkey
-    set_fact:
-        pmcs_authkey: "{{out_pmcs_authkey.stdout}}"
-    when: inventory_hostname==pmcs_keygen_node
-
--   name: write authkey
+-   name: write /etc/corosync/authkey
     copy:
-        content: "{{hostvars[pmcs_keygen_node].pmcs_authkey}}"
+        content: "{{pmcs_authkey}}"
         dest: /etc/corosync/authkey
-        owner: root
-        group: root
-        mode: 0400
-    when: inventory_hostname!=pmcs_keygen_node
-    register: out_pmcs_authkey
+    register: out_write_authkey
 
 -   name: set pmcs_reload, pmcs_installed fact fact
     set_fact:
         pmcs_reload: "{{out_pmcs_configuration is defined and out_pmcs_configuration.changed}}"
-        pmcs_restart: "{{out_pmcs_install_packages is defined and out_pmcs_install_packages.changed}}"
+        pmcs_restart: "{{out_write_authkey.changed or (out_pmcs_install_packages is defined and out_pmcs_install_packages.changed)}}"
 
 -   name: restart corosync
     service:
         name: corosync
         state: restarted
     when: pmcs_restart
-
--   name: reload corosync configuration
-    shell: |
-        corosync-cfgtool -R
-    when:
-    -   pmcs_members|map('extract',hostvars,'pmcs_reload')|select('equalto',True)|list|length > 0
-    -   inventory_hostname == pmcs_keygen_node
-    delegate_to: "{{pmcs_keygen_node}}"
-
--   name: give cluster 30 seconds to settle on first start
-    pause:
-        seconds: 30
-    when: pmcs_members|map('extract',hostvars,'pmcs_restart')|select('equalto',True)|list|length == pmcs_members|length
 
 -   name: wait for crm to be responsive
     shell: |
@@ -91,6 +56,27 @@
     register: out_crm_wait
     until: |
         "WAIT" not in out_crm_wait.stdout
+
+-   name: reload corosync configuration
+    run_once: true
+    shell: |
+        corosync-cfgtool -R
+    when:
+    -   pmcs_members|map('extract',hostvars,'pmcs_reload')|select('equalto',True)|list|length > 0
+
+-   name: wait for crm to be responsive
+    shell: |
+        crm status | grep ^"Current DC"|grep NONE && echo WAIT || true
+    retries: 20
+    delay: 2
+    register: out_crm_wait
+    until: |
+        "WAIT" not in out_crm_wait.stdout
+
+-   name: give cluster 30 seconds to settle on first start
+    pause:
+        seconds: 30
+    when: pmcs_members|map('extract',hostvars,'pmcs_restart')|select('equalto',True)|list|length == pmcs_members|length
 
 -   name: start, enable services
     service:
